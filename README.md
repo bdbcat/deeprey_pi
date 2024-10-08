@@ -9,7 +9,9 @@ Prerequisites...
 Building the plugin...
 $ cd deeprey_pi
 
-$ git submodule update --init opencpn-libs
+$ git submodule init
+
+$ git submodule update 
 
 $ mkdir build
 
