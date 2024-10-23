@@ -94,26 +94,108 @@ int deeprey_pi::Init(void)
       //    Get a pointer to the opencpn configuration object
       m_pconfig = GetOCPNConfigObject();
       m_pauimgr = GetFrameAuiManager();
-      m_pvdrcontrol = NULL;
 
       //    And load the configuration items
       LoadConfig();
 
-      m_tb_item_id_play = InsertPlugInToolSVG("Deeprey",
-            _svg_deeprey_play, _svg_deeprey_toggled, _svg_deeprey_toggled,
-            wxITEM_CHECK, "Deeprey", "", NULL,
-            DEEPREY_TOOL_POSITION, 0, this);
+      m_pauimgr = GetFrameAuiManager();
+       //m_pauimgr->Connect(wxEVT_AUI_PANE_CLOSE,
+       //                   wxAuiManagerEventHandler(dashboard_pi::OnPaneClose), NULL,
+       //                   this);
 
-       m_recording = false;
+       wxSize size = GetOCPNCanvasWindow()->GetClientSize();
+       wxPoint position = wxPoint(size.x * 5 / 10, 0);
+       size.x /= 2;
+       m_navCanvas = new NavCanvas(GetOCPNCanvasWindow(), wxID_ANY, position, size);
 
 
+       // button NAVIGATION
+#if 0
+      NavRotatedButton* navigation = new NavRotatedButton(
+          m_navCanvas,
+          wxID_ANY,
+          "NAVIGATION",
+          wxDefaultPosition,
+          wxSize(ROTATED_BUTTON_WIDTH, ROTATED_BUTTON_HEIGHT),
+          wxBU_BOTTOM);
+      Bind(wxEVT_BUTTON, &NavFrame::OnShowSidebar, this, navigation->GetId());
+      // button PLANNING
+      NavRotatedButton* planning = new NavRotatedButton(
+          m_navCanvas,
+          wxID_ANY,
+          "PLANNING",
+          wxDefaultPosition,
+          wxSize(ROTATED_BUTTON_WIDTH, ROTATED_BUTTON_HEIGHT),
+          wxBU_BOTTOM);
+      Bind(wxEVT_BUTTON, &NavFrame::OnPlanning, this, planning->GetId());
+      // right sizer
+#endif
+
+       m_navCanvas->SetSidebar(std::unique_ptr<NavSidebar>(new NavSidebar(
+           wxPoint(size.x - NAV_SIDEBAR_HEADER_HEIGHT - ROTATED_BUTTON_WIDTH - 5, 0),
+           wxSize(NAV_SIDEBAR_HEIGHT, size.y),
+           NAV_SIDEBAR_HEADER_HEIGHT)));
+
+       m_navCanvas->GetSidebar()->InsertItem(m_navCanvas->CreateSidebarItem(SIDEBAR_ITEM_AIR_TEXT), 0);
+       m_navCanvas->GetSidebar()->InsertItem(m_navCanvas->CreateSidebarItem(SIDEBAR_ITEM_COG_TEXT), 1);
+       m_navCanvas->GetSidebar()->InsertItem(m_navCanvas->CreateSidebarItem(SIDEBAR_ITEM_DPT_TEXT), 2);
+       m_navCanvas->GetSidebar()->InsertItem(m_navCanvas->CreateSidebarItem(SIDEBAR_ITEM_COG_IMAGE), 3);
+       m_navCanvas->GetSidebar()->InsertItem(m_navCanvas->CreateSidebarItem(SIDEBAR_ITEM_DPT_IMAGE), 4);
+
+#if 0
+      m_navCanvas->GetSidebar()->SetHeadBitmaps(
+          LoadSVG(wxT("plus.svg"), NAV_SIDEBAR_HEADER_ICON_WIDTH, NAV_SIDEBAR_HEADER_ICON_HEIGHT),
+          LoadSVG(wxT("close.svg"), NAV_SIDEBAR_HEADER_ICON_WIDTH, NAV_SIDEBAR_HEADER_ICON_HEIGHT)
+      );
+#endif
+
+       m_navCanvas->GetSidebar()->Layout();
+       m_navCanvas->GetSidebar()->Show(true);
+
+
+       wxAuiPaneInfo p = wxAuiPaneInfo()
+                             .Name("Panel")
+                             .Caption("Panel Caption")
+                             .CaptionVisible(false)
+                             .TopDockable(false)
+                             .BottomDockable(false)
+                             .LeftDockable(false)
+                             .RightDockable(true)
+                             .MinSize(wxSize(400,400))
+                             .BestSize(wxSize(400,400))
+                             .FloatingSize(wxSize(400,400))
+                             .FloatingPosition(200, 200)
+                             .Direction(wxAUI_DOCK_RIGHT)
+                             .Float()
+                             .Show( true)
+                             .Gripper(false);
+
+       m_pauimgr->AddPane(m_navCanvas, p);
+       m_pauimgr->Update();
+
+       m_navCanvas->Layout();
+       //m_navCanvas->Show(true);
+
+#if 0
+      wxBoxSizer* topSizer = new wxBoxSizer(wxHORIZONTAL);
+      topSizer->AddStretchSpacer(1);
+
+      std::unique_ptr<wxBoxSizer> rightSizer(new wxBoxSizer(wxVERTICAL));
+      rightSizer->AddSpacer(size.y * 0.2);
+      rightSizer->Add(navigation, wxSizerFlags().Right());
+      rightSizer->AddSpacer(size.y * 0.1);
+      rightSizer->Add(planning, wxSizerFlags().Right());
+      topSizer->Add(rightSizer.release());
+
+      m_navCanvas->SetSizerAndFit(topSizer);
+#endif
 
       return (
-           WANTS_TOOLBAR_CALLBACK    |
-           INSTALLS_TOOLBAR_TOOL     |
            WANTS_CONFIG              |
            WANTS_NMEA_SENTENCES      |
-           WANTS_AIS_SENTENCES
+           WANTS_AIS_SENTENCES       |
+           WANTS_LATE_INIT           |
+           USES_AUI_MANAGER
             );
 }
 
@@ -126,24 +208,24 @@ bool deeprey_pi::DeInit(void)
             m_istream.Close();
       }
 
-      if ( m_pvdrcontrol )
-      {
-            m_pauimgr->DetachPane( m_pvdrcontrol );
-            m_pvdrcontrol->Close();
-            m_pvdrcontrol->Destroy();
-            m_pvdrcontrol = NULL;
-      }
+      m_pauimgr->DetachPane(m_navCanvas);
+      m_navCanvas->Close();
+      m_navCanvas->Destroy();
 
-      if ( m_recording )
-      {
-            m_ostream.Close();
-            m_recording = false;
-      }
-
-      RemovePlugInTool( m_tb_item_id_record );
-      RemovePlugInTool( m_tb_item_id_play );
+      //delete m_navCanvas;
       return true;
 }
+
+void deeprey_pi::LateInit(void)
+{
+      wxAuiPaneInfo &pane = m_pauimgr->GetPane(m_navCanvas);
+      pane.Dock();
+      m_pauimgr->Update();
+
+      m_navCanvas->Layout();
+      m_navCanvas->Refresh();
+}
+
 
 int deeprey_pi::GetAPIVersionMajor()
 {
@@ -194,19 +276,17 @@ wxBitmap *deeprey_pi::GetPlugInBitmap()
 
 wxString deeprey_pi::GetCommonName()
 {
-      return _("VDR");
+      return _("Deeprey");
 }
 
 wxString deeprey_pi::GetShortDescription()
 {
-      return _("Voyage Data Recorder plugin for OpenCPN");
+      return _("Deeprey plugin for OpenCPN");
 }
 
 wxString deeprey_pi::GetLongDescription()
 {
-      return _("Voyage Data Recorder plugin for OpenCPN\n\
-Provides NMEA stream save and replay.");
-
+      return _("Enhanced UI for OpenCPN.");
 }
 
 void deeprey_pi::SetNMEASentence(wxString &sentence)
@@ -233,8 +313,6 @@ void deeprey_pi::Notify()
 
       PushNMEABuffer(str+_T("\r\n"));
 
-      if ( m_pvdrcontrol )
-            m_pvdrcontrol->SetProgress(pos);
 }
 
 void deeprey_pi::SetInterval( int interval )
@@ -244,83 +322,10 @@ void deeprey_pi::SetInterval( int interval )
             Start( m_interval, wxTIMER_CONTINUOUS ); // restart timer with new interval
 }
 
-int deeprey_pi::GetToolbarToolCount(void)
-{
-      return 2;
-}
 
-void deeprey_pi::OnToolbarToolCallback(int id)
-{
-      wxSize size = GetOCPNCanvasWindow()->GetClientSize();
-      wxPoint position = wxPoint(size.x * 5 / 10, 0);
-      size.x /= 2;
-      m_navCanvas = new NavCanvas(GetOCPNCanvasWindow(), wxID_ANY, position, size);
-
-      // button NAVIGATION
-#if 0
-      NavRotatedButton* navigation = new NavRotatedButton(
-          m_navCanvas,
-          wxID_ANY,
-          "NAVIGATION",
-          wxDefaultPosition,
-          wxSize(ROTATED_BUTTON_WIDTH, ROTATED_BUTTON_HEIGHT),
-          wxBU_BOTTOM);
-      Bind(wxEVT_BUTTON, &NavFrame::OnShowSidebar, this, navigation->GetId());
-      // button PLANNING
-      NavRotatedButton* planning = new NavRotatedButton(
-          m_navCanvas,
-          wxID_ANY,
-          "PLANNING",
-          wxDefaultPosition,
-          wxSize(ROTATED_BUTTON_WIDTH, ROTATED_BUTTON_HEIGHT),
-          wxBU_BOTTOM);
-      Bind(wxEVT_BUTTON, &NavFrame::OnPlanning, this, planning->GetId());
-      // right sizer
-#endif
-
-      m_navCanvas->SetSidebar(std::unique_ptr<NavSidebar>(new NavSidebar(
-          wxPoint(size.x - NAV_SIDEBAR_HEADER_HEIGHT - ROTATED_BUTTON_WIDTH - 5, 0),
-          wxSize(NAV_SIDEBAR_HEIGHT, size.y),
-          NAV_SIDEBAR_HEADER_HEIGHT)));
-
-      m_navCanvas->GetSidebar()->InsertItem(m_navCanvas->CreateSidebarItem(SIDEBAR_ITEM_AIR_TEXT), 0);
-      m_navCanvas->GetSidebar()->InsertItem(m_navCanvas->CreateSidebarItem(SIDEBAR_ITEM_COG_TEXT), 1);
-      m_navCanvas->GetSidebar()->InsertItem(m_navCanvas->CreateSidebarItem(SIDEBAR_ITEM_DPT_TEXT), 2);
-      m_navCanvas->GetSidebar()->InsertItem(m_navCanvas->CreateSidebarItem(SIDEBAR_ITEM_COG_IMAGE), 3);
-      m_navCanvas->GetSidebar()->InsertItem(m_navCanvas->CreateSidebarItem(SIDEBAR_ITEM_DPT_IMAGE), 4);
-
-#if 0
-      m_navCanvas->GetSidebar()->SetHeadBitmaps(
-          LoadSVG(wxT("plus.svg"), NAV_SIDEBAR_HEADER_ICON_WIDTH, NAV_SIDEBAR_HEADER_ICON_HEIGHT),
-          LoadSVG(wxT("close.svg"), NAV_SIDEBAR_HEADER_ICON_WIDTH, NAV_SIDEBAR_HEADER_ICON_HEIGHT)
-      );
-#endif
-
-      m_navCanvas->GetSidebar()->Layout();
-      m_navCanvas->GetSidebar()->Show(true);
-
-      wxBoxSizer* topSizer = new wxBoxSizer(wxHORIZONTAL);
-      topSizer->AddStretchSpacer(1);
-
-#if 0
-      std::unique_ptr<wxBoxSizer> rightSizer(new wxBoxSizer(wxVERTICAL));
-      rightSizer->AddSpacer(size.y * 0.2);
-      rightSizer->Add(navigation, wxSizerFlags().Right());
-      rightSizer->AddSpacer(size.y * 0.1);
-      rightSizer->Add(planning, wxSizerFlags().Right());
-      topSizer->Add(rightSizer.release());
-
-      m_navCanvas->SetSizerAndFit(topSizer);
-#endif
-
-}
 
 void deeprey_pi::SetColorScheme(PI_ColorScheme cs)
 {
-      if ( m_pvdrcontrol )
-      {
-            m_pvdrcontrol->SetColorScheme( cs );
-      }
 }
 
 bool deeprey_pi::LoadConfig(void)
@@ -350,55 +355,21 @@ bool deeprey_pi::SaveConfig(void)
             return false;
 }
 
-//----------------------------------------------------------------
-//
-//    VDR replay control Implementation
-//
-//----------------------------------------------------------------
+void deeprey_pi::UpdateAuiStatus(void) {
+      //    This method is called after the PlugIn is initialized
+      //    and the frame has done its initial layout, possibly from a saved
+      //    wxAuiManager "Perspective" It is a chance for the PlugIn to syncronize
+      //    itself internally with the state of any Panes that were added to the
+      //    frame in the PlugIn ctor.
 
-VDRControl::VDRControl( wxWindow *pparent, wxWindowID id, deeprey_pi *vdr, int speed, int range )
-      :wxWindow( pparent, id, wxDefaultPosition, wxDefaultSize, wxBORDER_NONE, _T("Dashboard") ), m_pvdr(vdr)
-{
-      wxColour cl;
-      GetGlobalColor(_T("DILG1"), &cl);
-      SetBackgroundColour(cl);
+      wxAuiPaneInfo &pane = m_pauimgr->GetPane(m_navCanvas);
+      pane.Dock();
+      m_pauimgr->Update();
 
-      wxFlexGridSizer *topsizer = new wxFlexGridSizer(2);
-      topsizer->AddGrowableCol(1);
+      m_navCanvas->Layout();
+      m_navCanvas->Refresh();
 
-      wxStaticText *itemStaticText01 = new wxStaticText( this, wxID_ANY, _("Speed:") );
-      topsizer->Add( itemStaticText01, 0, wxEXPAND|wxALL, 2 );
-
-      m_pslider = new wxSlider( this, wxID_ANY, speed, 1, 100, wxDefaultPosition, wxSize( 200, 20) );
-      topsizer->Add( m_pslider, 1, wxALL|wxEXPAND, 2 );
-      m_pslider->Connect( wxEVT_COMMAND_SLIDER_UPDATED, wxCommandEventHandler(VDRControl::OnSliderUpdated), NULL, this);
-
-      wxStaticText *itemStaticText02 = new wxStaticText( this, wxID_ANY, _("Progress:") );
-      topsizer->Add( itemStaticText02, 0, wxEXPAND|wxALL, 2 );
-
-      m_pgauge = new wxGauge( this, wxID_ANY, range, wxDefaultPosition, wxDefaultSize, wxGA_HORIZONTAL );
-      topsizer->Add( m_pgauge, 1, wxALL|wxEXPAND, 2 );
-
-      SetSizer( topsizer );
-      topsizer->Fit( this );
-      Layout();
 }
 
-void VDRControl::SetColorScheme( PI_ColorScheme cs )
-{
-      wxColour cl;
-      GetGlobalColor( _T("DILG1"), &cl );
-      SetBackgroundColour( cl );
 
-      Refresh(false);
-}
 
-void VDRControl::SetProgress( int progress )
-{
-      m_pgauge->SetValue( progress );
-}
-
-void VDRControl::OnSliderUpdated( wxCommandEvent& event )
-{
-      m_pvdr->SetInterval( 1000/m_pslider->GetValue() );
-}

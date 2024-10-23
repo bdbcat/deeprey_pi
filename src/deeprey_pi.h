@@ -47,8 +47,6 @@
 #include "config.h"
 
 
-#define DEEPREY_TOOL_POSITION -1          // Request default positioning of toolbar tool
-
 extern wxString _svg_deeprey_play;
 extern wxString _svg_deeprey_toggled;
 extern wxString _svg_deeprey_rollover;
@@ -76,6 +74,7 @@ public:
       wxString GetCommonName();
       wxString GetShortDescription();
       wxString GetLongDescription();
+      void LateInit(void);
 
       void Notify();
       void SetInterval( int interval );
@@ -83,9 +82,8 @@ public:
 //    The optional method overrides
       void SetNMEASentence( wxString &sentence );
       void SetAISSentence( wxString &sentence );
-      int GetToolbarToolCount( void );
-      void OnToolbarToolCallback( int id );
       void SetColorScheme( PI_ColorScheme cs );
+      void UpdateAuiStatus(void);
 
 private:
       bool LoadConfig( void );
@@ -105,22 +103,8 @@ private:
       wxFile            m_ostream;
       wxBitmap          m_panelBitmap;
 
-      NavCanvas* m_navCanvas;
+      NavCanvas*        m_navCanvas;
 };
 
-class VDRControl : public wxWindow
-{
-public:
-      VDRControl( wxWindow *pparent, wxWindowID id, deeprey_pi *vdr, int speed, int range );
-      void SetColorScheme( PI_ColorScheme cs );
-      void SetProgress( int progress );
-
-private:
-      void OnSliderUpdated( wxCommandEvent& event );
-
-      deeprey_pi           *m_pvdr;
-      wxSlider         *m_pslider;
-      wxGauge          *m_pgauge;
-};
 
 #endif
