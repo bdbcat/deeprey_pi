@@ -1,48 +1,30 @@
+# vdr\_pi README
 
-Linux Build
-Prerequisites...
+A record and replay plugin for OpenCPN.
 
-1. cmake c++ development stack
-2. wxWidgets development files, installed in standard location.
-3. OpenCPN installed and tested in standard method for platform, typically installed from repo, or built locally.
+More user info: https://opencpn.org/OpenCPN/plugins/vdr.html
 
-Building the plugin...
-$ cd deeprey_pi
+Building is documented in INSTALL.md
 
-$ git submodule init
+The plugin uses a continous integration setup described in the
+[wiki](https://github.com/Rasbats/managed_plugins/wiki/Alternative-Workflow)
+This setup is also able to push all updated metadata files to a clone
+of https://github.com/OpenCPN/plugins in order to simplify pull requests
+against this site.
 
-$ git submodule update 
 
-$ mkdir build
+## Copyright and licensing
 
-$ cd build
+This software is Copyright (c) Mike Rossiter 2017-2020. It is distributed
+under the terms of the Gnu Public License version 2 or, at your option,
+any later version. See the file COPYING for details.
 
-$ cmake ..
 
-The build artifact is normally a tarball, typically like: "deeprey_pi/build/DEEPREY-0.1.0.0+2410061344._debian-x86_64-12-x86_64.tar.gz"
-In production, this tarball is stored online, and an entry is added to the OpenCPN catalog to allow download and installation of the plugin.
+Icons made by Rick Gleason under GNU Public License version 2 or later.
 
-For production this build and upload step is managed by a CI/CD process.
+Icons made by Freepik(http://www.freepik.com) from
+Flaticon(https://www.flaticon.com/) and is licensed using Creative Commons
+BY 3.0 (http://creativecommons.org/licenses/by/3.0/)
 
-For local plugin building and testing, OpenCPN may directly "import" a locally built plugin tarball.
-
-To do this, a special configuration setting in OpenCPN must be enabled.
-
-a.  Stop OpenCPN, if running.
-
-b.  edit the OpenCPN configuration file, "~/.opencpn/opencpn.conf"
-
-c.  Add the following key/value to the "PlugIns" section of the config file:
-
-[PlugIns]
-
-CatalogExpert=1
-
-d.  Restart OpenCPN
-
-e.  Navigate to Settings->Plugins.  Touch the "Import" button, select the tarball, and proceed.
-
-f.  The imported plugin, if accepted, will now appear in the Plugin Manager list, ready for activation.
-
-Windows Build
-TODO
+The software contains open-source licensed files under different licenses
+including Expat and Libpng. See the source files for details.
